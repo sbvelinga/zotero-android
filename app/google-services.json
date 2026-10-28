@@ -62,6 +62,35 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "placeholder",
+        "android_client_info": {
+          "package_name": "org.zotero.android.dev"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "placeholder",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "placeholder"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "placeholder",
+              "client_type": 3
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

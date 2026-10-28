@@ -70,6 +70,10 @@ object Libs {
         const val loggingInterceptor = "com.squareup.okhttp3:logging-interceptor:$version"
     }
 
+    object Browser {
+        const val customTabs = "androidx.browser:browser:1.8.0"
+    }
+
     object ExoPlayer {
         private const val version = "1.10.1"
         const val exoPlayer = "androidx.media3:media3-exoplayer:$version"
@@ -137,4 +141,6 @@ object Libs {
     object Commons {
         const val text = "org.apache.commons:commons-text:1.15.0"
     }
+
+
 }

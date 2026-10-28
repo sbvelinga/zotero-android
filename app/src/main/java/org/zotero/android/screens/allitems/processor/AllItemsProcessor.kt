@@ -200,8 +200,23 @@ class AllItemsProcessor @Inject constructor(
                             AttachmentDownloader.Update.Kind.ready -> {
                                 showAttachment(key = update.key, parentKey = update.parentKey)
                             }
+                            is AttachmentDownloader.Update.Kind.readyWithLocalFile -> {
+                                val (attachment, library) = attachment(key = update.key, parentKey = update.parentKey)
+                                    ?: return@launch
+                                processorInterface.showLinkedFile(
+                                    attachment = attachment,
+                                    file = update.kind.file,
+                                    contentType = update.kind.mimeType,
+                                    parentKey = update.parentKey,
+                                    library = library,
+                                )
+                            }
                             is AttachmentDownloader.Update.Kind.failed -> {
-                                //TODO implement when unzipping is supported
+                                val error = update.kind.exception
+                                if (error is AttachmentDownloader.Error.linkedFileUnavailable) {
+                                    processorInterface.showLinkedFileError(error.reason)
+                                }
+                                //TODO implement for other failures when unzipping is supported
                             }
                             else -> {}
                         }
@@ -217,6 +232,7 @@ class AllItemsProcessor @Inject constructor(
             return
         }
         this.attachmentToOpen = null
+        processorInterface.setAttachmentOpening(false)
     }
 
     private fun onSortFieldChanged(id: String) {
@@ -346,6 +362,14 @@ class AllItemsProcessor @Inject constructor(
 
                 itemAccessories[updateKey] = ItemAccessory.attachment(updatedAttachment)
 
+                this@AllItemsProcessor.updateItemKey = updateKey
+                if (this@AllItemsProcessor.downloadBatchData != batchData) {
+                    this@AllItemsProcessor.downloadBatchData = batchData
+                }
+            }
+
+            is AttachmentDownloader.Update.Kind.readyWithLocalFile -> {
+                itemAccessories[updateKey] = ItemAccessory.attachment(attachment)
                 this@AllItemsProcessor.updateItemKey = updateKey
                 if (this@AllItemsProcessor.downloadBatchData != batchData) {
                     this@AllItemsProcessor.downloadBatchData = batchData
@@ -672,9 +696,11 @@ class AllItemsProcessor @Inject constructor(
             if (this.attachmentToOpen == attachment.key) {
                 this.attachmentToOpen = null
             }
+            processorInterface.setAttachmentOpening(false)
             this.fileDownloader.cancel(key = attachment.key, libraryId = attachment.libraryId)
         } else {
             this.attachmentToOpen = attachment.key
+            processorInterface.setAttachmentOpening(true)
             this.fileDownloader.downloadIfNeeded(attachment = attachment, parentKey = parentKey)
         }
     }

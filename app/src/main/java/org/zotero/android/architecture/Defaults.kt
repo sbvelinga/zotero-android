@@ -2,6 +2,7 @@ package org.zotero.android.architecture
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
 import androidx.core.content.edit
 import org.zotero.android.database.objects.AnnotationsConfig
 import org.zotero.android.files.DataMarshaller
@@ -77,6 +78,17 @@ open class Defaults @Inject constructor(
     private val webDavUrl = "webDavUrl"
     private val webDavScheme = "webDavScheme"
     private val webDavPassword = "webDavPassword"
+
+    private val linkedAttachmentBaseDir = "linkedAttachmentBaseDir"
+    private val linkedAttachmentStorageType = "linkedAttachmentStorageType"
+    private val linkedAttachmentOneDrivePath = "linkedAttachmentOneDrivePath"
+    private val linkedAttachmentOneDriveFolderId = "linkedAttachmentOneDriveFolderId"
+
+    private val oneDriveAccessToken = "oneDriveAccessToken"
+    private val oneDriveRefreshToken = "oneDriveRefreshToken"
+    private val oneDriveTokenExpirationTime = "oneDriveTokenExpirationTime"
+    private val oneDrivePkceVerifier = "oneDrivePkceVerifier"
+    private val oneDriveOAuthState = "oneDriveOAuthState"
 
     private val doNotShowAppUpdateBannerBeforeTime = "doNotShowAppUpdateBannerBeforeTime"
 
@@ -386,6 +398,95 @@ open class Defaults @Inject constructor(
         return sharedPreferences.getString(webDavPassword, null )
     }
 
+    fun setLinkedAttachmentBaseDir(uri: Uri?) {
+        if (uri == null) {
+            sharedPreferences.edit { remove(linkedAttachmentBaseDir) }
+        } else {
+            sharedPreferences.edit { putString(linkedAttachmentBaseDir, uri.toString()) }
+        }
+    }
+
+    fun getLinkedAttachmentBaseDir(): Uri? {
+        val uriString = sharedPreferences.getString(linkedAttachmentBaseDir, null)
+        return uriString?.let { Uri.parse(it) }
+    }
+
+    fun setLinkedAttachmentStorageType(type: LinkedAttachmentStorageType) {
+        sharedPreferences.edit { putString(linkedAttachmentStorageType, type.name) }
+    }
+
+    fun getLinkedAttachmentStorageType(): LinkedAttachmentStorageType {
+        val typeString = sharedPreferences.getString(linkedAttachmentStorageType, LinkedAttachmentStorageType.SAF.name)
+        return LinkedAttachmentStorageType.valueOf(typeString ?: LinkedAttachmentStorageType.SAF.name)
+    }
+
+    fun setLinkedAttachmentOneDrivePath(path: String?) {
+        if (path == null) {
+            sharedPreferences.edit { remove(linkedAttachmentOneDrivePath) }
+        } else {
+            sharedPreferences.edit { putString(linkedAttachmentOneDrivePath, path) }
+        }
+    }
+
+    fun getLinkedAttachmentOneDrivePath(): String? {
+        return sharedPreferences.getString(linkedAttachmentOneDrivePath, null)
+    }
+
+    //The display breadcrumb above is for showing the user what they picked. Resolution uses
+    //this stable OneDrive item id instead, since folder names can be renamed or duplicated
+    //and typing a path by hand was a common source of lookup failures.
+    fun setLinkedAttachmentOneDriveFolderId(id: String?) {
+        if (id == null) {
+            sharedPreferences.edit { remove(linkedAttachmentOneDriveFolderId) }
+        } else {
+            sharedPreferences.edit { putString(linkedAttachmentOneDriveFolderId, id) }
+        }
+    }
+
+    fun getLinkedAttachmentOneDriveFolderId(): String? {
+        return sharedPreferences.getString(linkedAttachmentOneDriveFolderId, null)
+    }
+
+    fun setOneDriveAccessToken(str: String?) {
+        sharedPreferences.edit { putString(oneDriveAccessToken, str) }
+    }
+
+    fun getOneDriveAccessToken(): String? {
+        return sharedPreferences.getString(oneDriveAccessToken, null)
+    }
+
+    fun setOneDriveRefreshToken(str: String?) {
+        sharedPreferences.edit { putString(oneDriveRefreshToken, str) }
+    }
+
+    fun getOneDriveRefreshToken(): String? {
+        return sharedPreferences.getString(oneDriveRefreshToken, null)
+    }
+
+    fun setOneDriveTokenExpirationTime(time: Long) {
+        sharedPreferences.edit { putLong(oneDriveTokenExpirationTime, time) }
+    }
+
+    fun getOneDriveTokenExpirationTime(): Long {
+        return sharedPreferences.getLong(oneDriveTokenExpirationTime, 0L)
+    }
+
+    fun setOneDrivePkceVerifier(str: String?) {
+        sharedPreferences.edit { putString(oneDrivePkceVerifier, str) }
+    }
+
+    fun getOneDrivePkceVerifier(): String? {
+        return sharedPreferences.getString(oneDrivePkceVerifier, null)
+    }
+
+    fun setOneDriveOAuthState(str: String?) {
+        sharedPreferences.edit { putString(oneDriveOAuthState, str) }
+    }
+
+    fun getOneDriveOAuthState(): String? {
+        return sharedPreferences.getString(oneDriveOAuthState, null)
+    }
+
     fun setWebDavUrl(str: String?) {
         sharedPreferences.edit { putString(webDavUrl, str) }
     }
@@ -590,6 +691,17 @@ open class Defaults @Inject constructor(
         setWebDavUsername(null)
         setWebDavPassword(null)
         setWebDavVerified(false)
+
+        setLinkedAttachmentBaseDir(null)
+        setLinkedAttachmentStorageType(LinkedAttachmentStorageType.SAF)
+        setLinkedAttachmentOneDrivePath(null)
+        setLinkedAttachmentOneDriveFolderId(null)
+
+        setOneDriveAccessToken(null)
+        setOneDriveRefreshToken(null)
+        setOneDriveTokenExpirationTime(0L)
+        setOneDrivePkceVerifier(null)
+        setOneDriveOAuthState(null)
 
         setDoNotShowAppUpdateBannerBeforeTime(0L)
 

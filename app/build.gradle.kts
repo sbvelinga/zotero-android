@@ -42,6 +42,7 @@ android {
         buildConfigField("boolean", "EVENT_AND_CRASH_LOGGING_ENABLED", "false")
         buildConfigField("String", "PSPDFKIT_KEY", "\"\"")
         manifestPlaceholders["enableCrashReporting"] = false
+        manifestPlaceholders["appAuthRedirectScheme"] = "org.zotero.android"
 
         //Making build version components to be accessible from within the app.
         buildConfigField("int", "BUILD_VERSION_MAJOR", "${BuildConfig.version.major}")
@@ -72,6 +73,18 @@ android {
     }
     androidResources {
         noCompress += listOf("ttf", "mov", "avi", "json", "html", "csv", "obb")
+    }
+
+    packaging {
+        resources {
+            excludes += listOf(
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE*",
+                "META-INF/NOTICE*",
+                "META-INF/INDEX.LIST",
+                "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
+            )
+        }
     }
 
     buildTypes {
@@ -107,9 +120,9 @@ android {
     setDefaultProductFlavors()
     productFlavors {
         dev {
-            resValue("string", "app_name", """"Zotero Debug""")
+            resValue("string", "app_name", """"Zotero Dev""")
             buildConfigField("String", "PSPDFKIT_KEY", readPspdfkitKey())
-            applicationIdSuffix = ".debug"
+            applicationId = "org.zotero.android.dev"
         }
         internal {
             resValue("string", "app_name", """"Zotero""")

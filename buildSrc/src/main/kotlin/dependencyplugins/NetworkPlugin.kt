@@ -20,5 +20,7 @@ private fun configure(project: Project) {
 
         add("implementation", Libs.OkHttp.core)
         add("implementation", Libs.OkHttp.loggingInterceptor)
+
+        add("implementation", Libs.Browser.customTabs)
     }
 }

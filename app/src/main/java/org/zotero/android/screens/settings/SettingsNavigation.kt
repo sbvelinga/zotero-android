@@ -16,6 +16,7 @@ import org.zotero.android.screens.settings.citesearch.SettingsCiteSearchScreen
 import org.zotero.android.screens.settings.csllocalepicker.SettingsCslLocalePickerScreen
 import org.zotero.android.screens.settings.debug.SettingsDebugLogScreen
 import org.zotero.android.screens.settings.debug.SettingsDebugScreen
+import org.zotero.android.screens.settings.linkedstorage.SettingsLinkedStorageScreen
 import org.zotero.android.screens.settings.quickcopy.SettingsQuickCopyScreen
 import org.zotero.android.screens.settings.stylepicker.SettingsStylePickerScreen
 import org.zotero.android.uicomponents.navigation.ZoteroNavHost
@@ -49,6 +50,7 @@ internal fun NavGraphBuilder.settingsNavScreens(
         toDebugScreen = navigation::toDebugScreen,
         toCiteScreen = navigation::toCiteScreen,
         toQuickCopyScreen = navigation::toQuickCopyScreen,
+        toLinkedStorageScreen = navigation::toLinkedStorageScreen,
     )
     accountScreen(
         onBack = navigation::onBack,
@@ -77,6 +79,7 @@ internal fun NavGraphBuilder.settingsNavScreens(
     debugLogScreen(onBack = navigation::onBack)
     singlePickerScreen(onBack = navigation::onBack)
     cslLocalePickerScreen(onBack = navigation::onBack)
+    linkedStorageScreen(onBack = navigation::onBack)
 }
 
 fun NavGraphBuilder.settingsScreen(
@@ -85,6 +88,7 @@ fun NavGraphBuilder.settingsScreen(
     toDebugScreen: () -> Unit,
     toCiteScreen: () -> Unit,
     toQuickCopyScreen: () -> Unit,
+    toLinkedStorageScreen: () -> Unit,
     onBack: () -> Unit,
 ) {
     composable(
@@ -97,6 +101,7 @@ fun NavGraphBuilder.settingsScreen(
             toDebugScreen = toDebugScreen,
             toCiteScreen = toCiteScreen,
             toQuickCopyScreen = toQuickCopyScreen,
+            toLinkedStorageScreen = toLinkedStorageScreen,
         )
     }
 }
@@ -219,6 +224,18 @@ private fun NavGraphBuilder.cslLocalePickerScreen(
     }
 }
 
+private fun NavGraphBuilder.linkedStorageScreen(
+    onBack: () -> Unit,
+) {
+    composable(
+        route = SettingsDestinations.LINKED_STORAGE,
+    ) {
+        SettingsLinkedStorageScreen(
+            onBack = onBack,
+        )
+    }
+}
+
 private object SettingsDestinations {
     const val SETTINGS = "settings"
     const val ACCOUNT = "account"
@@ -230,6 +247,7 @@ private object SettingsDestinations {
     const val CITE_SEARCH = "citeSearch"
     const val QUICK_COPY = "quickCopy"
     const val STYLE_PICKER = "stylePicker"
+    const val LINKED_STORAGE = "linkedStorage"
 }
 
 fun ZoteroNavigation.toSettingsScreen() {
@@ -270,4 +288,8 @@ fun ZoteroNavigation.toSinglePickerScreen() {
 
 fun ZoteroNavigation.toCslLocalePicker() {
     navController.navigate(SettingsDestinations.CSL_LOCALE_PICKER)
+}
+
+fun ZoteroNavigation.toLinkedStorageScreen() {
+    navController.navigate(SettingsDestinations.LINKED_STORAGE)
 }

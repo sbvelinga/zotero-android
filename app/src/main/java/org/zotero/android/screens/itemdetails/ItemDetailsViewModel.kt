@@ -81,6 +81,7 @@ import org.zotero.android.screens.addnote.data.AddOrEditNoteArgs
 import org.zotero.android.screens.addnote.data.SaveNoteAction
 import org.zotero.android.screens.collections.data.LibrariesAndCollectionsBackButtonActiveEvent
 import org.zotero.android.screens.creatoredit.data.CreatorEditArgs
+import org.zotero.android.androidx.content.longToast
 import org.zotero.android.screens.itemdetails.ItemDetailsViewEffect.NavigateToPdfScreen
 import org.zotero.android.screens.itemdetails.ItemDetailsViewEffect.OnBack
 import org.zotero.android.screens.itemdetails.ItemDetailsViewEffect.OpenFile
@@ -256,7 +257,14 @@ class ItemDetailsViewModel @Inject constructor(
                         showAttachment(key = update.key, parentKey = update.parentKey ,libraryId = update.libraryId)
                     }
                     is AttachmentDownloader.Update.Kind.failed -> {
-                        //TODO implement when unzipping is supported
+                        val error = update.kind.exception
+                        if (error is AttachmentDownloader.Error.linkedFileUnavailable) {
+                            viewModelScope.launch { context.longToast(error.reason) }
+                        }
+                        //TODO implement for other failures when unzipping is supported
+                    }
+                    is AttachmentDownloader.Update.Kind.readyWithLocalFile -> {
+                        showLinkedFile(update.key, update.kind.file, update.kind.mimeType)
                     }
                     else -> {}
                 }
@@ -271,7 +279,7 @@ class ItemDetailsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             updateState {
-                copy(attachmentToOpen = null)
+                copy(attachmentToOpen = null, isOpeningAttachment = false)
             }
         }
     }
@@ -1004,6 +1012,9 @@ class ItemDetailsViewModel @Inject constructor(
                         copy(attachments = attachmentsMutable.toPersistentList(), updateAttachmentKey = new.key)
                     }
                 }
+                is AttachmentDownloader.Update.Kind.readyWithLocalFile -> {
+                    showLinkedFile(update.key, update.kind.file, update.kind.mimeType)
+                }
             }
             triggerEffect(ScreenRefresh)
         }
@@ -1211,7 +1222,7 @@ class ItemDetailsViewModel @Inject constructor(
         if (progress != null) {
             if (viewState.attachmentToOpen == key) {
                 updateState {
-                    copy(attachmentToOpen = null)
+                    copy(attachmentToOpen = null, isOpeningAttachment = false)
                 }
             }
 
@@ -1224,7 +1235,7 @@ class ItemDetailsViewModel @Inject constructor(
         }
 
         updateState {
-            copy(attachmentToOpen = key)
+            copy(attachmentToOpen = key, isOpeningAttachment = true)
         }
         this.fileDownloader.downloadIfNeeded(attachment = attachment, parentKey = viewState.key)
     }
@@ -1647,34 +1658,72 @@ class ItemDetailsViewModel @Inject constructor(
                     key = attachment.key,
                     filename = filename,
                 )
-                when (contentType) {
-                    "application/pdf" -> {
-                        showPdf(file = file, parentKey = parentKey, attachment = attachment)
-                    }
-                    "text/html", "application/epub+zip" -> {
-                        Timber.i("ItemDetailsViewModel: show HTML / EPUB ${attachment.key}")
-                        showReader(
-                            file = file,
-                            parentKey = parentKey,
-                            attachment = attachment
-                        )
-                    }
-                    "text/plain" -> {
-                        val url = file.toUri().toString()
-                        val encodedUrl = URLEncoder.encode(url, StandardCharsets.UTF_8.toString())
-                        triggerEffect(ItemDetailsViewEffect.ShowZoteroWebView(encodedUrl))
-                    }
-                    else -> {
-                        if (contentType.contains("image")) {
-                            showImageFile(file)
-                        } else if (contentType.contains("video")) {
-                            showVideoFile(file)
-                        } else {
-                            openFile(file, contentType)
-                        }
-                    }
+                showFile(
+                    file = file,
+                    contentType = contentType,
+                    parentKey = parentKey,
+                    attachment = attachment,
+                )
+            }
+        }
+    }
+
+    //Shared by regular attachments and by linked files, which resolve to a cached copy rather
+    //than to a file inside the attachment storage.
+    private fun showFile(
+        file: File,
+        contentType: String,
+        parentKey: String?,
+        attachment: Attachment,
+    ) {
+        when (contentType) {
+            "application/pdf" -> {
+                showPdf(file = file, parentKey = parentKey, attachment = attachment)
+            }
+            "text/html", "application/epub+zip" -> {
+                Timber.i("ItemDetailsViewModel: show HTML / EPUB ${attachment.key}")
+                showReader(
+                    file = file,
+                    parentKey = parentKey,
+                    attachment = attachment
+                )
+            }
+            "text/plain" -> {
+                val url = file.toUri().toString()
+                val encodedUrl = URLEncoder.encode(url, StandardCharsets.UTF_8.toString())
+                triggerEffect(ItemDetailsViewEffect.ShowZoteroWebView(encodedUrl))
+            }
+            else -> {
+                if (contentType.contains("image")) {
+                    showImageFile(file)
+                } else if (contentType.contains("video")) {
+                    showVideoFile(file)
+                } else {
+                    openFile(file, contentType)
                 }
             }
+        }
+    }
+
+    private fun showLinkedFile(key: String, file: File, mimeType: String) {
+        if (viewState.library == null) {
+            return
+        }
+        val attachment = viewState.attachments.firstOrNull { it.key == key }
+        if (attachment == null) {
+            Timber.e("ItemDetailsViewModel: no attachment found for resolved linked file $key")
+            return
+        }
+        //This is reached from the attachment downloader's event stream, which (like
+        //showAttachment below) delivers on a background dispatcher rather than main. showFile
+        //eventually calls triggerEffect/updateState, which both require the main thread.
+        viewModelScope.launch {
+            showFile(
+                file = file,
+                contentType = mimeType,
+                parentKey = viewState.key,
+                attachment = attachment,
+            )
         }
     }
 
@@ -2100,6 +2149,7 @@ data class ItemDetailsViewState(
     var tags: PersistentList<Tag> = persistentListOf(),
     var updateAttachmentKey: String? = null,
     var attachmentToOpen: String? = null,
+    var isOpeningAttachment: Boolean = false,
     var isLoadingData: Boolean = false,
     var backgroundProcessedItems: ImmutableSet<String> = emptyImmutableSet(),
     val longPressOptionsHolder: LongPressOptionsHolder? = null,

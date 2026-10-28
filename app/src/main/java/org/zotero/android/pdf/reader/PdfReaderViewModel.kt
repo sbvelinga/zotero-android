@@ -141,11 +141,13 @@ import org.zotero.android.pdf.colorpicker.queuedUpPdfReaderColorPickerResult
 import org.zotero.android.pdf.data.AnnotationBoundingBoxConverter
 import org.zotero.android.pdf.data.AnnotationPreviewManager
 import org.zotero.android.pdf.data.AnnotationsFilter
+import org.zotero.android.pdf.data.DarkModePageColor
 import org.zotero.android.pdf.data.PDFAnnotation
 import org.zotero.android.pdf.data.PDFDatabaseAnnotation
 import org.zotero.android.pdf.data.PDFDocumentAnnotation
 import org.zotero.android.pdf.data.PDFSettings
 import org.zotero.android.pdf.data.PageFitting
+import org.zotero.android.pdf.data.SepiaPageOverlayProvider
 import org.zotero.android.pdf.data.PageLayoutMode
 import org.zotero.android.pdf.data.PageScrollDirection
 import org.zotero.android.pdf.data.PdfAnnotationChanges
@@ -229,6 +231,11 @@ class PdfReaderViewModel @Inject constructor(
     private lateinit var dirtyUri: Uri
     private lateinit var pdfUiFragment: PdfUiFragment
     private lateinit var pdfFragment: PdfFragment
+    private val sepiaPageOverlayProvider = SepiaPageOverlayProvider()
+    //Set by generatePdfConfiguration() and read right after the fragment (re)starts, since the
+    //whole PdfUiFragment is rebuilt from scratch on every settings change rather than mutated,
+    //so there is nothing to remove: only whether to add the overlay again needs to be tracked.
+    private var shouldShowSepiaPageOverlay = false
     private var onAnnotationUpdatedListener: AnnotationProvider.OnAnnotationUpdatedListener? = null
     private lateinit var document: PdfDocument
     private lateinit var rawDocument: PdfDocument
@@ -470,6 +477,9 @@ class PdfReaderViewModel @Inject constructor(
                 override fun onStart(owner: LifecycleOwner) {
                     this@PdfReaderViewModel.pdfFragment = pdfUiFragment.pdfFragment!!
                     this@PdfReaderViewModel.pdfFragment.addDrawableProvider(searchResultHighlighter)
+                    if (this@PdfReaderViewModel.shouldShowSepiaPageOverlay) {
+                        this@PdfReaderViewModel.pdfFragment.addDrawableProvider(sepiaPageOverlayProvider)
+                    }
                     addDocumentListenerOnInit()
                     addOnAnnotationCreationModeChangeListener()
                     setOnPreparePopupToolbarListener()
@@ -2207,14 +2217,24 @@ class PdfReaderViewModel @Inject constructor(
             true -> ThemeMode.NIGHT
             false -> ThemeMode.DEFAULT
         }
+        //The UI chrome (themeMode, above) always follows the resolved dark/light state. Page
+        //rendering is a separate choice that only applies once the UI is actually dark: the
+        //classic inverted "night mode" look, a warm sepia tint, or the page left untouched.
+        val darkModePageColor = pdfSettings.resolvedDarkModePageColor()
+        val shouldInvertColors = isCalculatedThemeDark && darkModePageColor == DarkModePageColor.INVERTED
+        this.shouldShowSepiaPageOverlay = isCalculatedThemeDark && darkModePageColor == DarkModePageColor.SEPIA
+        Timber.i("PdfReaderViewModel: generatePdfConfiguration isCalculatedThemeDark=$isCalculatedThemeDark darkModePageColor=$darkModePageColor shouldInvertColors=$shouldInvertColors shouldShowSepiaPageOverlay=$shouldShowSepiaPageOverlay")
 
         return PdfActivityConfiguration.Builder(context)
             .scrollDirection(scrollDirection)
             .scrollMode(scrollMode)
             .fitMode(fitMode)
             .layoutMode(pageMode)
-            .invertColors(isCalculatedThemeDark)
             .themeMode(themeMode)
+            //Must come after themeMode(): switching to ThemeMode.NIGHT applies its own default
+            //page inversion as a side effect, which would otherwise silently override an
+            //explicit invertColors(false) set earlier in the chain.
+            .invertColors(shouldInvertColors)
             .showNoteEditorForNewNoteAnnotations(false)
 //            .disableFormEditing()
 //            .disableAnnotationRotation()
@@ -2529,6 +2549,10 @@ class PdfReaderViewModel @Inject constructor(
             override fun onStart(owner: LifecycleOwner) {
                 this@PdfReaderViewModel.pdfFragment = pdfUiFragment.pdfFragment!!
                 this@PdfReaderViewModel.pdfFragment.addDrawableProvider(searchResultHighlighter)
+                Timber.i("PdfReaderViewModel: replaceFragment onStart shouldShowSepiaPageOverlay=${this@PdfReaderViewModel.shouldShowSepiaPageOverlay}")
+                if (this@PdfReaderViewModel.shouldShowSepiaPageOverlay) {
+                    this@PdfReaderViewModel.pdfFragment.addDrawableProvider(sepiaPageOverlayProvider)
+                }
                 addDocumentListener2()
                 addOnAnnotationCreationModeChangeListener()
                 setOnPreparePopupToolbarListener()

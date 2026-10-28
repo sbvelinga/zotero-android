@@ -274,41 +274,91 @@ internal class AllItemsViewModel @Inject constructor(
                         key = attachment.key,
                         filename = filename,
                     )
-                    when (contentType) {
-                        "application/pdf" -> {
-                            showReader(
-                                file = file,
-                                key = attachment.key,
-                                parentKey = parentKey,
-                                library = library
-                            )
-                        }
+                    showFile(
+                        file = file,
+                        contentType = contentType,
+                        attachmentKey = attachment.key,
+                        parentKey = parentKey,
+                        library = library,
+                    )
+                }
+            }
+        }
+    }
 
-                        "text/html", "application/epub+zip" -> {
-                            Timber.i("AllItemsViewModel: show HTML / EPUB ${attachment.key}")
-                            showReader(
-                                file = file,
-                                key = attachment.key,
-                                parentKey = parentKey,
-                                library = library
-                            )
-                        }
+    override fun showLinkedFile(
+        attachment: Attachment,
+        file: File,
+        contentType: String,
+        parentKey: String?,
+        library: Library
+    ) {
+        viewModelScope.launch {
+            showFile(
+                file = file,
+                contentType = contentType,
+                attachmentKey = attachment.key,
+                parentKey = parentKey,
+                library = library,
+            )
+        }
+    }
 
-                        "text/plain" -> {
-                            val url = file.toUri().toString()
-                            val encodedUrl = URLEncoder.encode(url, StandardCharsets.UTF_8.toString())
-                            triggerEffect(AllItemsViewEffect.ShowZoteroWebView(encodedUrl))
-                        }
-                        else -> {
-                            if (contentType.contains("image")) {
-                                showImageFile(file)
-                            } else if (contentType.contains("video")) {
-                                showVideoFile(file)
-                            } else {
-                                openFile(file, contentType)
-                            }
-                        }
-                    }
+    override fun showLinkedFileError(reason: String) {
+        viewModelScope.launch {
+            context.longToast(reason)
+        }
+    }
+
+    //Called from the attachment downloader's event stream, which delivers on a background
+    //dispatcher, so this always hops back to main before touching state.
+    override fun setAttachmentOpening(isOpening: Boolean) {
+        viewModelScope.launch {
+            updateState { copy(isOpeningAttachment = isOpening) }
+        }
+    }
+
+    //Shared by regular attachments and by linked files, which resolve to a cached copy rather
+    //than to a file inside the attachment storage.
+    private fun showFile(
+        file: File,
+        contentType: String,
+        attachmentKey: String,
+        parentKey: String?,
+        library: Library,
+    ) {
+        when (contentType) {
+            "application/pdf" -> {
+                showReader(
+                    file = file,
+                    key = attachmentKey,
+                    parentKey = parentKey,
+                    library = library
+                )
+            }
+
+            "text/html", "application/epub+zip" -> {
+                Timber.i("AllItemsViewModel: show HTML / EPUB $attachmentKey")
+                showReader(
+                    file = file,
+                    key = attachmentKey,
+                    parentKey = parentKey,
+                    library = library
+                )
+            }
+
+            "text/plain" -> {
+                val url = file.toUri().toString()
+                val encodedUrl = URLEncoder.encode(url, StandardCharsets.UTF_8.toString())
+                triggerEffect(AllItemsViewEffect.ShowZoteroWebView(encodedUrl))
+            }
+            else -> {
+                if (contentType.contains("image")) {
+                    showImageFile(file)
+                } else if (contentType.contains("video")) {
+                    showVideoFile(file)
+                } else {
+                    openFile(file, contentType)
                 }
             }
         }
@@ -1424,6 +1474,7 @@ internal data class AllItemsViewState(
     val isGeneratingCitation: Boolean = false,
     val appUpdateBannerPayload: String = "",
     val shouldShowAppUpdateBanner: Boolean = false,
+    val isOpeningAttachment: Boolean = false,
 ) : ViewState {
     val tagsFilter: Set<String>?
         get() {

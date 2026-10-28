@@ -79,3 +79,8 @@ app/src/main/assets/cslLocales/
 
 #reader generated files:
 app/src/main/assets/reader/
+
+# Pix Agent
+.pi/
+.pi-lens/
+.cache/

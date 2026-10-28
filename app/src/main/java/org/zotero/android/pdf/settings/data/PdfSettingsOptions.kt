@@ -21,4 +21,9 @@ enum class PdfSettingsOptions(@StringRes val optionStringId: Int) {
     AppearanceLight(Strings.pdf_settings_appearance_light_mode),
     AppearanceDark(Strings.pdf_settings_appearance_dark_mode),
     AppearanceAutomatic(Strings.pdf_settings_appearance_auto),
+
+    //Only shown when AppearanceDark is selected; picks how pages render under the dark UI.
+    DarkPageColorInverted(Strings.pdf_settings_dark_page_color_inverted),
+    DarkPageColorSepia(Strings.pdf_settings_appearance_sepia_mode),
+    DarkPageColorWhite(Strings.pdf_settings_dark_page_color_white),
 }

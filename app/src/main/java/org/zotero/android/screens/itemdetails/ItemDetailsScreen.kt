@@ -13,7 +13,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import org.zotero.android.screens.itemdetails.topbars.ItemDetailsEditingTopBar
 import org.zotero.android.screens.itemdetails.topbars.ItemDetailsTopBar
 import org.zotero.android.uicomponents.CustomScaffoldM3
+import org.zotero.android.uicomponents.Strings
 import org.zotero.android.uicomponents.bottomsheet.LongPressBottomSheetM3
+import org.zotero.android.uicomponents.foundation.safeStringResource
+import org.zotero.android.uicomponents.loading.LoadingPopup
 import org.zotero.android.uicomponents.reorder.rememberReorderState
 import org.zotero.android.uicomponents.themem3.AppThemeM3
 import java.io.File
@@ -163,6 +166,10 @@ internal fun ItemDetailsScreen(
                 onCollapse = viewModel::dismissBottomSheet,
                 onOptionClick = viewModel::onLongPressOptionsItemSelected
             )
+        }
+
+        if (viewState.isOpeningAttachment) {
+            LoadingPopup(message = safeStringResource(id = Strings.attachment_opening))
         }
     }
 }

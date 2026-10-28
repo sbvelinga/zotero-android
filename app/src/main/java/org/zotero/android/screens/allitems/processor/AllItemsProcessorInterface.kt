@@ -10,6 +10,7 @@ import org.zotero.android.screens.allitems.data.ItemsFilter
 import org.zotero.android.screens.itemdetails.data.DetailType
 import org.zotero.android.sync.Collection
 import org.zotero.android.sync.Library
+import java.io.File
 
 interface AllItemsProcessorInterface {
 
@@ -19,6 +20,9 @@ interface AllItemsProcessorInterface {
     fun currentFilters(): List<ItemsFilter>
 
     fun show(attachment: Attachment, parentKey: String?, library: Library)
+    fun showLinkedFile(attachment: Attachment, file: File, contentType: String, parentKey: String?, library: Library)
+    fun showLinkedFileError(reason: String)
+    fun setAttachmentOpening(isOpening: Boolean)
     fun updateTagFilter()
     fun isEditing(): Boolean
     fun showItemDetailWithDelay(creation: DetailType.creation)

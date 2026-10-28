@@ -13,6 +13,7 @@ import org.zotero.android.architecture.ViewState
 import org.zotero.android.architecture.navigation.NavigationParamsMarshaller
 import org.zotero.android.architecture.require
 import org.zotero.android.pdf.ARG_PDF_SETTINGS_SCREEN
+import org.zotero.android.pdf.data.DarkModePageColor
 import org.zotero.android.pdf.data.PDFSettings
 import org.zotero.android.pdf.data.PageAppearanceMode
 import org.zotero.android.pdf.data.PageFitting
@@ -67,7 +68,8 @@ internal class PdfSettingsViewModel @Inject constructor(
                     selectedAppearanceOption = convert(pdfSettings.appearanceMode),
                     selectedPageFittingOption = convert(pdfSettings.pageFitting),
                     selectedPageModeOption = convert(pdfSettings.pageMode),
-                    selectedScrollDirectionOption = convert(pdfSettings.direction)
+                    selectedScrollDirectionOption = convert(pdfSettings.direction),
+                    selectedDarkPageColorOption = convert(pdfSettings.resolvedDarkModePageColor()),
                 )
             }
         }
@@ -111,6 +113,14 @@ internal class PdfSettingsViewModel @Inject constructor(
         }
     }
 
+    private fun convert(darkModePageColor: DarkModePageColor): PdfSettingsOptions {
+        return when (darkModePageColor) {
+            DarkModePageColor.INVERTED -> PdfSettingsOptions.DarkPageColorInverted
+            DarkModePageColor.SEPIA -> PdfSettingsOptions.DarkPageColorSepia
+            DarkModePageColor.WHITE -> PdfSettingsOptions.DarkPageColorWhite
+        }
+    }
+
     fun onOptionSelected(optionOrdinal: Int) {
         val option = PdfSettingsOptions.entries[optionOrdinal]
 
@@ -138,6 +148,11 @@ internal class PdfSettingsViewModel @Inject constructor(
             PdfSettingsOptions.AppearanceLight, PdfSettingsOptions.AppearanceDark, PdfSettingsOptions.AppearanceAutomatic -> {
                 updateState {
                     copy(selectedAppearanceOption = option)
+                }
+            }
+            PdfSettingsOptions.DarkPageColorInverted, PdfSettingsOptions.DarkPageColorSepia, PdfSettingsOptions.DarkPageColorWhite -> {
+                updateState {
+                    copy(selectedDarkPageColorOption = option)
                 }
             }
         }
@@ -194,6 +209,18 @@ internal class PdfSettingsViewModel @Inject constructor(
             PdfSettingsOptions.AppearanceAutomatic -> {
                 pdfSettings.appearanceMode = PageAppearanceMode.AUTOMATIC
             }
+
+            PdfSettingsOptions.DarkPageColorInverted -> {
+                pdfSettings.darkModePageColor = DarkModePageColor.INVERTED
+            }
+
+            PdfSettingsOptions.DarkPageColorSepia -> {
+                pdfSettings.darkModePageColor = DarkModePageColor.SEPIA
+            }
+
+            PdfSettingsOptions.DarkPageColorWhite -> {
+                pdfSettings.darkModePageColor = DarkModePageColor.WHITE
+            }
         }
     }
 
@@ -213,8 +240,14 @@ internal data class PdfSettingsViewState(
     val selectedScrollDirectionOption: PdfSettingsOptions = PdfSettingsOptions.ScrollDirectionHorizontal,
     val selectedPageFittingOption: PdfSettingsOptions = PdfSettingsOptions.PageFittingFit,
     val selectedAppearanceOption: PdfSettingsOptions = PdfSettingsOptions.AppearanceAutomatic,
+    val selectedDarkPageColorOption: PdfSettingsOptions = PdfSettingsOptions.DarkPageColorInverted,
     val isDark: Boolean = false,
 ) : ViewState {
+
+    //The page-color choice only means something once the UI itself is dark, so it stays
+    //hidden the rest of the time rather than showing a control with no visible effect.
+    val showDarkPageColorOptions: Boolean
+        get() = selectedAppearanceOption == PdfSettingsOptions.AppearanceDark
 
     val pageTransitionOptions = listOf(
         PdfSettingsOptions.PageTransitionJump,
@@ -237,6 +270,12 @@ internal data class PdfSettingsViewState(
         PdfSettingsOptions.AppearanceLight,
         PdfSettingsOptions.AppearanceDark,
         PdfSettingsOptions.AppearanceAutomatic
+    )
+
+    val darkPageColorOptions = listOf(
+        PdfSettingsOptions.DarkPageColorInverted,
+        PdfSettingsOptions.DarkPageColorSepia,
+        PdfSettingsOptions.DarkPageColorWhite,
     )
 
 }

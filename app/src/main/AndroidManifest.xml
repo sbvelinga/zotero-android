@@ -96,6 +96,18 @@
             android:name="com.pspdfkit.ui.PdfActivity"
             android:windowSoftInputMode="adjustNothing" />
 
+        <activity
+            android:name=".screens.oauth.OAuthCallbackActivity"
+            android:exported="true"
+            android:theme="@style/AppTheme.Transparent">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="${appAuthRedirectScheme}" android:host="oauth2redirect" />
+            </intent-filter>
+        </activity>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

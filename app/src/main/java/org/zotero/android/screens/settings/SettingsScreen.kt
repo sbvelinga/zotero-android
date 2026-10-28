@@ -28,6 +28,7 @@ internal fun SettingsScreen(
     toDebugScreen: () -> Unit,
     toCiteScreen: () -> Unit,
     toQuickCopyScreen: () -> Unit,
+    toLinkedStorageScreen: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     AppThemeM3 {
@@ -78,6 +79,10 @@ internal fun SettingsScreen(
                 NewSettingsItem(
                     title = stringResource(id = Strings.settings_debug),
                     onItemTapped = toDebugScreen,
+                )
+                NewSettingsItem(
+                    title = "Linked Attachment Storage",
+                    onItemTapped = toLinkedStorageScreen,
                 )
 
                 NewSettingsDivider()

@@ -49,5 +49,14 @@ internal fun PdfSettingsTable(
             selectedOption = viewState.selectedAppearanceOption,
             optionSelected = viewModel::onOptionSelected
         )
+
+        if (viewState.showDarkPageColorOptions) {
+            pdfSettingsSettingRow(
+                titleResId = Strings.pdf_settings_dark_page_color_title,
+                options = viewState.darkPageColorOptions,
+                selectedOption = viewState.selectedDarkPageColorOption,
+                optionSelected = viewModel::onOptionSelected
+            )
+        }
     }
 }

@@ -96,4 +96,10 @@
     <string name="pdf_settings_scroll_mode_horizontal">Horizontal</string>
     <string name="pdf_settings_scroll_mode_wrapped">Wrapped</string>
 
+    <string name="pdf_settings_dark_page_color_title">Page Color</string>
+    <string name="pdf_settings_dark_page_color_inverted">Inverted</string>
+    <string name="pdf_settings_dark_page_color_white">White</string>
+
+    <string name="attachment_opening">Opening file…</string>
+
 </resources>

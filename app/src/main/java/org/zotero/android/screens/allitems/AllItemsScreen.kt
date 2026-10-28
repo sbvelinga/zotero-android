@@ -21,6 +21,7 @@ import org.zotero.android.uicomponents.error.FullScreenError
 import org.zotero.android.uicomponents.foundation.safeStringResource
 import org.zotero.android.uicomponents.loading.BaseLceBox
 import org.zotero.android.uicomponents.loading.CircularLoading
+import org.zotero.android.uicomponents.loading.LoadingPopup
 import org.zotero.android.uicomponents.themem3.AppThemeM3
 import java.io.File
 
@@ -236,5 +237,8 @@ internal fun AllItemsScreen(
             showBottomSheet = viewState.shouldShowAddBottomSheet
         )
 
+        if (viewState.isOpeningAttachment) {
+            LoadingPopup(message = safeStringResource(id = Strings.attachment_opening))
+        }
     }
 }

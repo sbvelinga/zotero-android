@@ -3,6 +3,7 @@ package org.zotero.android.attachmentdownloader
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import org.zotero.android.api.ZoteroApi
 import org.zotero.android.api.ZoteroNoRedirectApi
 import org.zotero.android.api.network.CustomResult
@@ -12,7 +13,9 @@ import org.zotero.android.database.objects.Attachment.FileLinkType
 import org.zotero.android.database.objects.Attachment.FileLocation
 import org.zotero.android.database.objects.Attachment.Kind
 import org.zotero.android.database.requests.MarkFileAsDownloadedDbRequest
+import org.zotero.android.database.requests.ReadAttachmentPathDbRequest
 import org.zotero.android.files.FileStore
+import org.zotero.android.files.LinkedFileResolver
 import org.zotero.android.helpers.Unzipper
 import org.zotero.android.sync.LibraryIdentifier
 import org.zotero.android.webdav.WebDavController
@@ -34,11 +37,13 @@ class AttachmentDownloader @Inject constructor(
     private val unzipper: Unzipper,
     private val webDavController: WebDavController,
     private val sessionStorage: WebDavSessionStorage,
+    private val linkedFileResolver: LinkedFileResolver,
 ) {
     sealed class Error : Exception() {
         object incompatibleAttachment : Error()
         object zipDidntContainRequestedFile : Error()
         object cantUnzipSnapshot : Error()
+        data class linkedFileUnavailable(val reason: String) : Error()
     }
 
     data class Download(
@@ -57,6 +62,7 @@ class AttachmentDownloader @Inject constructor(
             object ready : Kind()
             data class failed(val exception: Throwable) : Kind()
             object cancelled : Kind()
+            data class readyWithLocalFile(val file: File, val mimeType: String) : Kind()
         }
 
 
@@ -209,8 +215,61 @@ class AttachmentDownloader @Inject constructor(
                 val location = attachmentType.location
                 val linkType = attachmentType.linkType
                 when (linkType) {
-                    FileLinkType.linkedFile, FileLinkType.embeddedImage -> {
-                        Timber.i("AttachmentDownloader: tried opening linkedFile or embeddedImage ${attachment.key}")
+                    FileLinkType.linkedFile -> {
+                        Timber.i("AttachmentDownloader: opening linkedFile ${attachment.key}")
+
+                        val path: String
+                        try {
+                            path = dbWrapperMain.realmDbStorage.perform(
+                                ReadAttachmentPathDbRequest(attachment.libraryId, attachment.key)
+                            )
+                        } catch (e: Throwable) {
+                            Timber.e(e, "AttachmentDownloader: failed to read attachment path")
+                            attachmentDownloaderEventStream.emitAsync(
+                                Update.init(
+                                    key = attachment.key,
+                                    parentKey = parentKey,
+                                    libraryId = attachment.libraryId,
+                                    kind = Update.Kind.failed(
+                                        Error.linkedFileUnavailable("This linked attachment has no stored path.")
+                                    )
+                                )
+                            )
+                            return
+                        }
+
+                        coroutineScope.launch {
+                            val result = linkedFileResolver.resolve(path)
+                            if (result is LinkedFileResolver.Result.Failure) {
+                                attachmentDownloaderEventStream.emitAsync(
+                                    Update.init(
+                                        key = attachment.key,
+                                        parentKey = parentKey,
+                                        libraryId = attachment.libraryId,
+                                        kind = Update.Kind.failed(Error.linkedFileUnavailable(result.reason))
+                                    )
+                                )
+                                return@launch
+                            }
+                            val resolvedFile = (result as LinkedFileResolver.Result.Success).file
+
+                            Timber.i("AttachmentDownloader: linkedFile resolved to: ${resolvedFile.absolutePath}")
+                            attachmentDownloaderEventStream.emitAsync(
+                                Update.init(
+                                    key = attachment.key,
+                                    parentKey = parentKey,
+                                    libraryId = attachment.libraryId,
+                                    kind = Update.Kind.readyWithLocalFile(
+                                        resolvedFile,
+                                        attachmentType.contentType
+                                    )
+                                )
+                            )
+                        }
+                    }
+
+                    FileLinkType.embeddedImage -> {
+                        Timber.i("AttachmentDownloader: tried opening embeddedImage ${attachment.key}")
 
                         attachmentDownloaderEventStream.emitAsync(
                             Update.init(

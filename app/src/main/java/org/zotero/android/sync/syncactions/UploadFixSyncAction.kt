@@ -70,6 +70,11 @@ class UploadFixSyncAction @AssistedInject constructor(
                             this.finishDownload = null
                         }
 
+                        is AttachmentDownloader.Update.Kind.readyWithLocalFile -> {
+                            this.finishDownload?.let { it(CustomResult.GeneralSuccess(Unit)) }
+                            this.finishDownload = null
+                        }
+
                         is AttachmentDownloader.Update.Kind.progress, AttachmentDownloader.Update.Kind.cancelled -> {
                             //no-op
                         }

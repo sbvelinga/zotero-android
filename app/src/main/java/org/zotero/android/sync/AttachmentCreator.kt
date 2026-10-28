@@ -41,7 +41,7 @@ class AttachmentCreator {
                     when {
                         attachment.type is Attachment.Kind.url ->
                             return attachment
-                        attachment.type is Attachment.Kind.file && (attachment.type.linkType == Attachment.FileLinkType.importedFile || attachment.type.linkType == Attachment.FileLinkType.importedUrl) ->
+                        attachment.type is Attachment.Kind.file && (attachment.type.linkType == Attachment.FileLinkType.importedFile || attachment.type.linkType == Attachment.FileLinkType.importedUrl || attachment.type.linkType == Attachment.FileLinkType.linkedFile) ->
                             return attachment
                         else -> {
                             //no-op
@@ -68,8 +68,21 @@ class AttachmentCreator {
             val linkMode = firstAttachmentData.linkMode
 
             val rAttachment = item.children?.get(idx)
-            val linkType: Attachment.FileLinkType =
-                if (linkMode == LinkMode.importedFile) Attachment.FileLinkType.importedFile else Attachment.FileLinkType.importedUrl
+            val linkType: Attachment.FileLinkType = when (linkMode) {
+                LinkMode.importedFile -> Attachment.FileLinkType.importedFile
+                LinkMode.linkedFile -> Attachment.FileLinkType.linkedFile
+                else -> Attachment.FileLinkType.importedUrl
+            }
+
+            //Linked files live outside the app's storage, so they are resolved by path rather
+            //than by the imported-file location logic.
+            if (linkType == Attachment.FileLinkType.linkedFile) {
+                if (rAttachment == null) {
+                    return null
+                }
+                val linkedType = linkedFileType(item = rAttachment) ?: return null
+                return Attachment.initWithItemAndKind(item = rAttachment, type = linkedType)
+            }
 
 
             val libraryId = rAttachment?.libraryId
@@ -97,7 +110,7 @@ class AttachmentCreator {
             for ((idx, child) in item.children.freeze().withIndex()) {
                 if (child.rawType == ItemTypes.attachment && child.syncState != ObjectSyncState.dirty.name && !child.trash) {
                     val linkMode = child.fields.firstOrNull { it.key == FieldKeys.Item.Attachment.linkMode }?.let{ LinkMode.from(it.value) }
-                    if (linkMode == LinkMode.importedUrl || linkMode == LinkMode.importedFile) {
+                    if (linkMode == LinkMode.importedUrl || linkMode == LinkMode.importedFile || linkMode == LinkMode.linkedFile) {
                         val contentType = contentType(child)
                         if (contentType != null && mainAttachmentContentTypes.contains(contentType)) {
                             var hasMatchingUrlWithParent = false
@@ -274,6 +287,18 @@ class AttachmentCreator {
             }
 
 
+            //Linked files store a path instead of a filename, so derive the type from it.
+            val path = item.fields.firstOrNull { it.key == FieldKeys.Item.Attachment.path }?.value
+            if (path != null) {
+                val ext = File(path).extension
+                if (ext.isNotEmpty()) {
+                    val contentType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+                    if (contentType != null) {
+                        return contentType
+                    }
+                }
+            }
+
             val title = item.fields.firstOrNull {it.key == FieldKeys.Item.Attachment.title}?.value
             if (title != null) {
                 val split = title.split(".")
@@ -445,14 +470,14 @@ class AttachmentCreator {
 
 
         private fun linkedFileType(item: RItem): Attachment.Kind? {
-            val contentType = item.fields.firstOrNull { it.key == FieldKeys.Item.Attachment.contentType }?.value
-            if (contentType == null || contentType.isEmpty()) {
-                Timber.e("AttachmentCreator: content type missing for item ${item.key}")
-                return null
-            }
             val path = item.fields.firstOrNull { it.key == FieldKeys.Item.Attachment.path }?.value
             if (path == null || path.isEmpty()) {
                 Timber.e("AttachmentCreator: path missing for item ${item.key}")
+                return null
+            }
+            val contentType = contentType(item)
+            if (contentType == null || contentType.isEmpty()) {
+                Timber.e("AttachmentCreator: content type missing for item ${item.key}")
                 return null
             }
 
